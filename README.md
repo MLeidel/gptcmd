@@ -10,8 +10,8 @@ command-line access for Gpt Chat limited API format
     GPTMOD="engine model" (required)
     GPTWRAP="line wrap length" (optional)
 
- Type your prompt on the command-line.
+Type your prompt on the command-line.
 
- log of requests is kept in file $HOME/gptcmd.log
+log of requests is kept in file $HOME/gptcmd.log
 
 

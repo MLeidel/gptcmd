@@ -15,7 +15,8 @@ Type your prompt on the command-line.
 
 log of requests is kept in file $HOME/gptcmd.log
 
-**gptcmd** and **gptcom** *fancier/compiled ways* to do the following:
+**gptcmd**, **GptCLI**, and **gptcom** are basically  
+go, c, and python versions of the following bash script:
 
 ```bash
 #!/bin/bash

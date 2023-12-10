@@ -1,38 +1,39 @@
 /*
- gptcmd.go
- command-line access for Gpt Chat default format
+	gptcmd.go
+	command-line access for Gpt Chat default format
 
- Requires 2 Env Variables:
-	 GPTKEY="your OpenAI key" (required)
-	 GPTMOD="engine model" (required)
-	 GPTWRAP="line wrap length" (optional)
- Type your prompt on the command-line.
+	Requires 2 Env Variables:
+		GPTKEY="your OpenAI key" (required)
+		GPTMOD="engine model" (required)
+		GPTWRAP="line wrap length" (optional)
+		GPTTMP=temperature (optional)
+	Type your prompt on the command-line.
 
- log of requests is kept in file $HOME/gptcmd.log
+	log of requests is kept in file $HOME/gptcmd.log
 */
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
-	"strings"
-	"strconv"
-	"log"
-	"bufio"
-	"time"
 	"runtime"
+	"strconv"
+	"strings"
+	"time"
 )
 
 const (
-	YEL  = "\033[33;1m"
-	GRN  = "\033[0;32m"
-	BLU  = "\033[34;1m"    // bright: blue
-	ORG  = "\033[0;33m"   // kind of brown
-	DFT  = "\033[0m\n"   // reset to default color
+	YEL = "\033[33;1m"
+	GRN = "\033[0;32m"
+	BLU = "\033[34;1m" // bright: blue
+	ORG = "\033[0;33m" // kind of brown
+	DFT = "\033[0m\n"  // reset to default color
 )
 
 type Message struct {
@@ -41,12 +42,14 @@ type Message struct {
 }
 
 type Data struct {
-	Model    string    `json:"model"`
-	Messages []Message `json:"messages"`
+	Model       string    `json:"model"`
+	Messages    []Message `json:"messages"`
+	Temperature float32   `json:"temperature"`
 }
 
-/* 	This is the struct that corresponds to the JSON
-	return object. The JSON is "unmarshaled" into it.
+/*
+	 	This is the struct that corresponds to the JSON
+		return object. The JSON is "unmarshaled" into it.
 */
 type Completion struct {
 	ID                string `json:"id"`
@@ -71,22 +74,22 @@ type Completion struct {
 
 func wrap(input string, limit int) string {
 	/* 	Create and return a new string by
-		limiting substrings at word boundaries*/
-    fields := strings.Fields(input)
-    if limit <= 0 {
-        return strings.Join(fields, " ")
-    }
-    format, count, result := "", 0, make([]string, len(fields))
-    for index, word := range fields {
-         if count + len(word) > limit {
-             format = "\n"
-             count = 0
-         }
-         count += len(word) + 1
-         result[index] = format + word
-         format = " "
-    }
-    return strings.Join(result, "")
+	limiting substrings at word boundaries*/
+	fields := strings.Fields(input)
+	if limit <= 0 {
+		return strings.Join(fields, " ")
+	}
+	format, count, result := "", 0, make([]string, len(fields))
+	for index, word := range fields {
+		if count+len(word) > limit {
+			format = "\n"
+			count = 0
+		}
+		count += len(word) + 1
+		result[index] = format + word
+		format = " "
+	}
+	return strings.Join(result, "")
 }
 
 func logRequest(prompt string, text string) {
@@ -95,11 +98,11 @@ func logRequest(prompt string, text string) {
 	if runtime.GOOS == "windows" {
 		filepath = os.Getenv("USERPROFILE") + "\\"
 	} else {
-		filepath = os.Getenv("HOME") + "/"  // linux
+		filepath = os.Getenv("HOME") + "/" // linux
 	}
 
 	if filepath == "" {
-		return  // don't write to log file
+		return // don't write to log file
 	}
 
 	file, err := os.OpenFile(filepath+"gptcmd.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -114,7 +117,7 @@ func logRequest(prompt string, text string) {
 	tstr := t.Format(layout)
 
 	// Write new data to file
-	newData := "\n"+tstr+"\n> "+prompt+"\n>> "+text+"\n"
+	newData := "\n" + tstr + "\n> " + prompt + "\n>> " + text + "\n"
 	writer := bufio.NewWriter(file)
 	_, _ = writer.WriteString(newData)
 
@@ -125,7 +128,6 @@ func logRequest(prompt string, text string) {
 	}
 }
 
-
 /***
  *      __  __           _
  *     |  \/  |   __ _  (_)  _ __
@@ -135,31 +137,46 @@ func logRequest(prompt string, text string) {
  *
  */
 
-
 func main() {
-
-	helpstr := `
-gptcmd v1.0 2023
-Requires 2 Env Variables:
-  GPTKEY="your OpenAI key" (required)
-  GPTMOD="engine model" (required)
-  GPTWRAP="line wrap length" (optional)
-Type your prompt on the command-line.
-`
-	if len(os.Args) < 2 {
-		fmt.Printf("%s%s%s",GRN, helpstr, DFT)
-		os.Exit(0)
-	}
 
 	// Join all arguments with space as separator
 	args := os.Args[1:]
 	userprompt := strings.Join(args, " ")
 
+	// set up data for the Gpt Chat request
 	url := "https://api.openai.com/v1/chat/completions"
 	// collect the Environment values
 	openAPIKey := os.Getenv("GPTKEY")
 	openAPIModel := os.Getenv("GPTMOD")
 	wraplength := os.Getenv("GPTWRAP")
+	var temp float32 // json value must be numeric
+	f64, err := strconv.ParseFloat(os.Getenv("GPTTMP"), 32)
+	if err != nil {
+		temp = 0.7
+	} else {
+		temp = float32(f64)
+	}
+
+	// print HELP if no arguments (promt)
+
+	if len(os.Args) < 2 {
+		helpstr := `
+gptcmd v1.0 2023
+Type your prompt on the command-line.
+Requires 2 Env Variables:
+`
+		fmt.Printf("%s%s", GRN, helpstr)
+		if openAPIKey == "" {
+			fmt.Println("GPTKEY (required):", "NOT set!")
+		} else {
+			fmt.Println("GPTKEY (required):", "Set")
+		}
+		fmt.Println(GRN+"GPTMOD (required):", openAPIModel)
+		fmt.Println("GPTWRAP:", wraplength)
+		fmt.Println("GPTTMP:", temp)
+		fmt.Println(DFT)
+		os.Exit(0)
+	}
 
 	// JSON for the Chat POST request data
 	data := Data{
@@ -174,6 +191,7 @@ Type your prompt on the command-line.
 				Content: userprompt,
 			},
 		},
+		Temperature: temp,
 	}
 
 	jsonData, err := json.Marshal(data)
@@ -206,7 +224,7 @@ Type your prompt on the command-line.
 	}
 
 	// bodyBytes is in Byte format
-	// fmt.Println(string(bodyBytes))
+	// fmt.Println(string(bodyBytes))  // debug the json response
 
 	var completion Completion
 	err = json.Unmarshal(bodyBytes, &completion)
@@ -218,9 +236,10 @@ Type your prompt on the command-line.
 	fmt.Printf("\n%s%s says:\n", YEL, openAPIModel)
 	fmt.Println("Model:", completion.Model)
 	fmt.Println("Total Tokens:", completion.Usage.TotalTokens)
+
 	respstr := completion.Choices[0].Message.Content
 	if wraplength != "" {
-	  	num, err := strconv.Atoi(wraplength)
+		num, err := strconv.Atoi(wraplength)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)

@@ -6,15 +6,20 @@ and linux written in Go using the OpenAI API**
 
 command-line access for Gpt Chat limited API format
 
- Requires 2 Env Variables:  
+ Requires 2 Environment Variables:  
 >   GPTKEY="your OpenAI key" (required)  
     GPTMOD="engine model" (required)  
     GPTWRAP="line wrap length" (optional)  
+    GPTTMP="temperature" (optional)  
 
 Type your prompt on the command-line.
 
-log of requests is kept in file $HOME/gptcmd.log
+A log of requests is kept in file _HOME_/gptcmd.log  
+for Windows _USERPROFILE_/gptcmd.log
 
+compiled versions are offered here to use at your own risk.
+
+---
 **gptcmd**, **GptCLI**, and **gptcom** are basically  
 go, c, and python versions of the following bash script:
 

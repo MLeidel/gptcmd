@@ -22,4 +22,5 @@ go.work
 go.mod
 getmd
 copy
-
+gptcmd
+gptcmd.exe

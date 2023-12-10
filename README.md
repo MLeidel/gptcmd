@@ -10,11 +10,23 @@ and linux written in Go using the OpenAI API**
     GPTTMP="temperature" (optional)  
 
 Type your prompt on the command-line.
+```bash
+  $> gptcmd Hello my prompt is everything I type after gptcmd ...
+
+```
 
 A log of requests is kept in file _HOME_/gptcmd.log  
 for Windows _USERPROFILE_/gptcmd.log
 
-Compiled versions are offered here to use at your own risk.
+Compiled versions are offered here to use at your own risk.  
+The source is here as well. Install Golang and compile yourself:  
+```bash
+  $> go build gptcmd.go   # linux
+  $> GOOS=windows GOARCH=386 go build gptcmd.go   # windows
+  $> GOOS=linux GOARCH=arm GOARM=5 go build gptcmd.go   # raspberry pi
+
+```
+
 
 ---
 **gptcmd**, **GptCLI**, and **gptcom** are basically  
